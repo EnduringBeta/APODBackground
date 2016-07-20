@@ -1,0 +1,7 @@
+# Ignore these files!
+
+*.exe
+*.suo
+*.pdb
+
+[Oo]bj/
