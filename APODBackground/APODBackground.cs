@@ -24,7 +24,7 @@ namespace APODBackground
         static void Main(string[] args)
         {
             // Initialize Background image directory and filename
-            string backgroundDirectory = System.Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+            string backgroundDirectory = System.Environment.GetFolderPath(Environment.SpecialFolder.MyPictures) + "\\";
             string backgroundFilename  = "Background";
 
             // Create local image directory/filename
