@@ -10,6 +10,7 @@
 // By Ross Llewallyn
 
 using System;
+using System.Net;
 using System.Runtime.InteropServices;
 
 namespace APODBackground
@@ -36,19 +37,25 @@ namespace APODBackground
             // Initialize raw data variable
             string rawData = "";
 
+            string protocol = "https://";
+
             // URL for Astronomy Picture of the Day (APOD)
-            string URL = "http://apod.nasa.gov/apod/";
+            string URL = protocol + "apod.nasa.gov/";
             
             // Get current APOD HTML file
             Console.WriteLine("Accessing current Astronomy Picture of the Day webpage...");
+
+            // Set up web client
+            // Thank you, nqynik! (http://stackoverflow.com/questions/34945002/the-request-was-aborted-could-not-create-ssl-tls-secure-channel-system-net-webe)
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             var myClient = new System.Net.WebClient();
             try
             {
                 rawData = myClient.DownloadString(URL);
             }
-            catch
+            catch (Exception e)
             {
-                Console.Error.WriteLine("Website could not be accessed!");
+                Console.Error.WriteLine("Website could not be accessed: " + e.Message);
                 Console.WriteLine();
                 Console.WriteLine("Press any key to continue...");
                 Console.ReadKey(true);
@@ -91,7 +98,7 @@ namespace APODBackground
 
                         // This section may not be full-proof. But I haven't seen this situation in an APOD yet.
                         // If local reference, make full URL
-                        if (!imageName.Contains("http"))
+                        if (!imageName.Contains(protocol))
                             imageURL = string.Concat(URL, imageName);
                         // If already direct reference, leave alone
                         else
@@ -105,10 +112,10 @@ namespace APODBackground
                         {
                             myClient.DownloadFile(imageURL, localFilename + imageExt);
                         }
-                        catch
+                        catch (Exception e)
                         {
                             Console.WriteLine();
-                            Console.WriteLine("Download failed!");
+                            Console.WriteLine("Download failed: " + e.Message);
 
                             Console.WriteLine();
                             Console.WriteLine("Press any key to continue...");

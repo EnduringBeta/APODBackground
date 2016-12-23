@@ -1,7 +1,9 @@
 # Ignore these files!
 
-*.exe
 *.suo
 *.pdb
+*.exe.config
+*.vshost.exe
 
-[Oo]bj/
+bin/Debug/
+obj/
