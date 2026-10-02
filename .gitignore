@@ -7,3 +7,7 @@
 
 bin/Debug/
 obj/
+
+# No big LLM infrastructure needed here
+
+.vs/
