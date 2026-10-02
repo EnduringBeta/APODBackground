@@ -1,11 +1,9 @@
 ﻿// This program grabs the current Astronomy Picture of the Day and makes it the wallpaper.
-// Currently it only tries to download the first displayed image in the source code, which should be the APOD in most cases.
-// Though when the feature is a YouTube video, it will not change the wallpaper.
-// This program will place the background image in "C:\TEMP\" as "Background.XXX".
+// After ignoring header data, it tries to download the first displayed image in the HTML, which should be the APOD in most cases.
 // The code checks to see if "src" appears before the image URL to see if it is actually displayed.
-
-// TODO: Write code to scan through many days for potential issues
-// TODO: Test other OSes
+// Though when the feature is a YouTube video, it will not change the wallpaper.
+// This program will place the background image in "C:\Users\<user>\Pictures" as "APOD-YYYY-MM-DD.XXX".
+// This creates a collection over time, which Windows may start showing in a gallery on the lock screen.
 
 // By Ross Llewallyn
 
@@ -18,29 +16,25 @@ namespace APODBackground
     class APODBackground
     {
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        private static extern Int32 SystemParametersInfo(UInt32 uiAction, UInt32 uiParam, String pvParam, UInt32 fWinIni);
-        private static UInt32 SPI_SETDESKWALLPAPER = 20;
-        private static UInt32 SPIF_UPDATEINIFILE = 0x1;
+        private static extern int SystemParametersInfo(uint uiAction, uint uiParam, string pvParam, uint fWinIni);
+        private static readonly uint SPI_SETDESKWALLPAPER = 20;
+        private static readonly uint SPIF_UPDATEINIFILE = 0x1;
 
-        static void Main(string[] args)
+        static void Main()
         {
             // Initialize Background image directory and filename
-            string backgroundDirectory = System.Environment.GetFolderPath(Environment.SpecialFolder.MyPictures) + "\\";
-            string backgroundFilename  = "Background";
-
-            // Create local image directory/filename
-            string localFilename = string.Concat(backgroundDirectory, backgroundFilename);
+            string backgroundDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures) + "\\";
 
             // Keep track of how many images found
             int numImages = 0;
 
             // Initialize raw data variable
-            string rawData = "";
+            string rawData;
 
             string protocol = "https://";
 
             // URL for Astronomy Picture of the Day (APOD)
-            string URL = protocol + "apod.nasa.gov/";
+            string URL = protocol + "science.nasa.gov/apod";
             
             // Get current APOD HTML file
             Console.WriteLine("Accessing current Astronomy Picture of the Day webpage...");
@@ -48,7 +42,7 @@ namespace APODBackground
             // Set up web client
             // Thank you, nqynik! (http://stackoverflow.com/questions/34945002/the-request-was-aborted-could-not-create-ssl-tls-secure-channel-system-net-webe)
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            var myClient = new System.Net.WebClient();
+            var myClient = new WebClient();
             try
             {
                 rawData = myClient.DownloadString(URL);
@@ -62,20 +56,25 @@ namespace APODBackground
                 return;
             }
 
+            // Filter out unneeded stuff before actual HTML
+            rawData = rawData.Substring(rawData.IndexOf("<body"));
+
+            // Attempt to remove starting HTML for headers, etc.
+            // The parent element for the APOD image has class "entry-content".
+            int entryContentIndex = rawData.IndexOf("entry-content");
+            if (entryContentIndex != -1) {
+                rawData = rawData.Substring(entryContentIndex);
+            }
+
             // Debug - Display downloaded HTML file
             //Console.Write(rawData);
             //Console.ReadKey(true);
 
             string[] searchExts = { ".jpg", ".jpeg", ".JPG", ".JPEG", ".png", ".PNG" };
-            string imageExt;
-            int i;
 
             // Begin image search
-            for (i = 0; i < searchExts.Length; i++)
+            foreach (string imageExt in searchExts)
             {
-                // Apply new extension to search for
-                imageExt = searchExts[i];
-
                 // Find location of end of first image name
                 int imageEnd = rawData.IndexOf(imageExt);
 
@@ -107,10 +106,12 @@ namespace APODBackground
                         Console.WriteLine();
                         Console.WriteLine("Downloading image...");
 
+                        string targetFilename = backgroundDirectory + "APOD-" + DateTime.Now.ToString("yyyy-MM-dd") + imageExt;
+
                         // Download raw image
                         try
                         {
-                            myClient.DownloadFile(imageURL, localFilename + imageExt);
+                            myClient.DownloadFile(imageURL, targetFilename);
                         }
                         catch (Exception e)
                         {
@@ -126,7 +127,7 @@ namespace APODBackground
                         // Download successful!
 
                         // Set as background
-                        SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, localFilename + imageExt, SPIF_UPDATEINIFILE);
+                        SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, targetFilename, SPIF_UPDATEINIFILE);
 
                         Console.WriteLine();
                         Console.WriteLine("Done! Set as wallpaper.");
