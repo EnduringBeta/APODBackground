@@ -45,7 +45,9 @@ namespace APODBackground
             var myClient = new WebClient();
             try
             {
-                rawData = myClient.DownloadString(URL);
+                // Download raw bytes and decode as UTF-8 to avoid mojibake (double-encoding?) for non-ASCII characters
+                byte[] rawBytes = myClient.DownloadData(URL);
+                rawData = System.Text.Encoding.UTF8.GetString(rawBytes);
             }
             catch (Exception e)
             {
@@ -93,25 +95,32 @@ namespace APODBackground
                     // If the image URL found is the one displayed
                     if (rawData.Substring(imageStart - 10, 10).ToLower().Contains("src"))
                     {
-                        string imageURL;
-
-                        // This section may not be full-proof. But I haven't seen this situation in an APOD yet.
-                        // If local reference, make full URL
-                        if (!imageName.Contains(protocol))
-                            imageURL = string.Concat(URL, imageName);
-                        // If already direct reference, leave alone
+                        Uri imageUri;
+                        // Handle protocol-relative URLs (e.g., //assets...)
+                        if (imageName.StartsWith("//"))
+                        {
+                            imageUri = new Uri(protocol.TrimEnd(':') + imageName);
+                        }
+                        // Already absolute URL (most common situation?)
+                        else if (Uri.TryCreate(imageName, UriKind.Absolute, out imageUri))
+                        {
+                            // imageUri set by TryCreate
+                        }
                         else
-                            imageURL = imageName;
+                        {
+                            var baseUri = new Uri(URL.EndsWith("/") ? URL : URL + "/");
+                            imageUri = new Uri(baseUri, imageName);
+                        }
 
                         Console.WriteLine();
-                        Console.WriteLine("Downloading image...");
+                        Console.WriteLine("Downloading image: {0}", imageUri.AbsoluteUri);
 
                         string targetFilename = backgroundDirectory + "APOD-" + DateTime.Now.ToString("yyyy-MM-dd") + imageExt;
 
                         // Download raw image
                         try
                         {
-                            myClient.DownloadFile(imageURL, targetFilename);
+                            myClient.DownloadFile(imageUri, targetFilename);
                         }
                         catch (Exception e)
                         {
@@ -133,7 +142,7 @@ namespace APODBackground
                         Console.WriteLine("Done! Set as wallpaper.");
 
                         Console.WriteLine();
-                        Console.WriteLine("Filename: {0}", imageURL);
+                        Console.WriteLine("Filename: {0}", targetFilename);
 
                         Console.WriteLine();
                         Console.WriteLine("Press any key to continue...");
